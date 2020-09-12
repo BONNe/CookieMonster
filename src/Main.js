@@ -289,7 +289,8 @@ CM.ConfigDefault = {
 	TooltipGrim:1, 
 	ToolWrink: 1, 
 	Stats: 1, 
-	UpStats: 1, 
+	MissingUpgrades: 0,
+	UpStats: 1,
 	TimeFormat: 0, 
 	SayTime: 1, 
 	GrimoireBar: 1, 
@@ -299,6 +300,6 @@ CM.ConfigDefault = {
 };
 CM.ConfigPrefix = 'CMConfig';
 
-CM.VersionMajor = '2.021';
+CM.VersionMajor = '2.029';
 CM.VersionMinor = '2';
 

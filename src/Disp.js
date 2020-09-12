@@ -1155,6 +1155,7 @@ CM.Disp.AddMenuPref = function(title) {
 
 	frag.appendChild(header('Statistics'));
 	frag.appendChild(listing('Stats'));
+	frag.appendChild(listing('MissingUpgrades'));
 	frag.appendChild(listing('UpStats'));
 	frag.appendChild(listing('TimeFormat'));
 	frag.appendChild(listing('SayTime'));
@@ -1557,14 +1558,135 @@ CM.Disp.AddMenu = function() {
 	if (Game.onMenu == 'prefs') {
 		CM.Disp.AddMenuPref(title);
 	}
-	else if (CM.Config.Stats == 1 && Game.onMenu == 'stats') {
-		CM.Disp.AddMenuStats(title);
+	else if (Game.onMenu == 'stats') {
+		// Add missing upgrades before improved stats, as it will mess with element count.
+		if (CM.Config.MissingUpgrades) {
+			CM.Disp.AddMissingUpgrades();
+		}
+		if (CM.Config.Stats == 1) {
+			CM.Disp.AddMenuStats(title);
+		}
 	}
 }
 
 CM.Disp.RefreshMenu = function() {
 	if (CM.Config.UpStats && Game.onMenu == 'stats' && (Game.drawT - 1) % (Game.fps * 5) != 0 && (Game.drawT - 1) % Game.fps == 0) Game.UpdateMenu();
 }
+
+/**
+ * This function adds missing upgrades in Stats page under Upgrades menu.
+ * @constructor
+ */
+CM.Disp.AddMissingUpgrades = function() {
+	// TODO: Creating missing upgrades string improves performance per loop tick, but when buying any upgrade,
+	// still freeze game a bit.
+
+	if (Game.UpgradesOwned !== CM.Cache.UpgradesOwned) {
+		// Update cache!
+		CM.Cache.MissingUpgrades = [];
+		CM.Cache.MissingCookies = [];
+
+		// Populate Standart Upgrades
+		Game.UpgradesByPool[""].forEach(function (upgrade, index) {
+			if (!upgrade.bought) {
+				CM.Cache.MissingUpgrades.push(upgrade);
+			}
+		});
+
+		// Populate Tech Upgrades
+		Game.UpgradesByPool["tech"].forEach(function (upgrade, index) {
+			if (!upgrade.bought) {
+				CM.Cache.MissingUpgrades.push(upgrade);
+			}
+		});
+
+		// Populate Cookies
+		Game.UpgradesByPool["cookie"].forEach(function (upgrade, index) {
+			if (!upgrade.bought) {
+				CM.Cache.MissingCookies.push(upgrade);
+			}
+		});
+
+		var sortMap = function(a,b) {
+			if (a.order > b.order) return 1;
+			else if (a.order < b.order) return -1;
+			else return 0;
+		};
+
+		CM.Cache.MissingUpgrades.sort(sortMap);
+		CM.Cache.MissingCookies.sort(sortMap);
+
+		CM.Cache.UpgradesOwned = Game.UpgradesOwned;
+		CM.Cache.MissingUpgradesString = null;
+		CM.Cache.MissingCookiesString = null;
+	}
+
+	var upgradesMenu = null;
+
+	for (var i = 0; i < l("menu").getElementsByClassName("subsection").length && upgradesMenu == null; i++)
+	{
+		if (l("menu").getElementsByClassName("subsection")[i].getElementsByClassName("title")[0].textContent === "Upgrades")
+		{
+			upgradesMenu = l("menu").getElementsByClassName("subsection")[i];
+		}
+	}
+
+	// This function creates div element from given object. It also adds tooltip for it.
+	var createUpgradeElement = function (me) {
+		return '<div class="crate upgrade disabled noFrame" ' +
+			Game.getTooltip(
+				'<div style="padding:8px 4px;min-width:350px;">' +
+				'<div class="icon" style="float:left;margin-left:-8px;margin-top:-8px;' + (me.icon[2] ? 'background-image:url(' + me.icon[2] + ');' : '') + 'background-position:' + (-me.icon[0] * 48) + 'px ' + (-me.icon[1] * 48) + 'px;"></div>' +
+				'<div style="float:right;"><span class="price">' + Beautify(Math.round(me.getPrice())) + '</span></div>' +
+				'<div class="name">' + me.name + '</div>' +
+				'<div class="line"></div><div class="description">' + me.desc + '</div></div>',
+				'top',
+				true) +
+			' style="background-position:' + (-me.icon[0] * 48) + 'px ' + (-me.icon[1] * 48) + 'px;"></div>';
+	};
+
+	// This function creates section of given elements and adds this elements to it.
+	var createElementBox = function (elements) {
+		var div = document.createElement('div');
+		div.className = 'listing crateBox';
+
+		elements.forEach(function (element) {
+			div.innerHTML += createUpgradeElement(element);
+		});
+
+		return div;
+	};
+
+	// This function creates header element with given text.
+	var createHeader = function (text) {
+		var div = document.createElement('div');
+		div.className = 'listing';
+		var b = document.createElement('b');
+		b.textContent = text;
+		div.appendChild(b);
+		return div;
+	};
+
+	if (CM.Cache.MissingUpgrades.length > 0) {
+		upgradesMenu.appendChild(createHeader("Missing Upgrades"));
+
+		if (CM.Cache.MissingUpgradesString == null) {
+			CM.Cache.MissingUpgradesString = createElementBox(CM.Cache.MissingUpgrades);
+		}
+
+		upgradesMenu.appendChild(CM.Cache.MissingUpgradesString);
+	}
+
+	if (CM.Cache.MissingCookies.length > 0) {
+		upgradesMenu.appendChild(createHeader("Missing Cookies"));
+
+		if (CM.Cache.MissingCookiesString == null) {
+			CM.Cache.MissingCookiesString = createElementBox(CM.Cache.MissingCookies);
+		}
+
+		upgradesMenu.appendChild(CM.Cache.MissingCookiesString);
+	}
+};
 
 CM.Disp.FixMouseY = function(target) {
 	if (CM.Config.TimerBar == 1 && CM.Config.TimerBarPos == 0) {
